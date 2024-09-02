@@ -32,4 +32,33 @@ SELECT "CREATE DATABASE flight_search" WHERE NOT EXISTS (SELECT FROM pg_database
 EOSQL
 ```
 
-### 2.2 Образ фронтенд Nginx.
+### 2.2 Образ бэкенда.
+Dockerfile:  
+```
+FROM python:3.10
+COPY requirements.txt requirements.txt
+RUN python -m pip install --upgrade pip && pip install -r requirements.txt
+WORKDIR /app
+COPY ./flight_catcher/ ./flight_catcher/
+COPY ./flight_search/ ./flight_search/
+COPY ./data.py ./data.py
+COPY ./manage.py ./manage.py
+COPY ./entrypoint.sh ./entrypoint.sh
+EXPOSE 8000
+RUN chmod +x entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]
+```
+Команда `RUN chmod +x entrypoint.sh` делает файл исполняемым.  
+Сам файл entrypoint.sh содержит команды запуска миграций и заполнения базы данных:  
+```
+#! /bin/bash
+
+python manage.py makemigrations --no-input
+python manage.py migrate --no-input
+python manage.py collectstatic --no-input
+python manage.py load_cities
+
+exec gunicorn flight_catcher.wsgi:application -b 0.0.0.0:8000 --reload
+```
+
+
