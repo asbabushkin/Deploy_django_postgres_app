@@ -45,10 +45,9 @@ COPY ./data.py ./data.py
 COPY ./manage.py ./manage.py
 COPY ./entrypoint.sh ./entrypoint.sh
 EXPOSE 8000
-RUN chmod +x entrypoint.sh
+RUN chmod +x entrypoint.sh   # делаем файл entrypoint.sh исполняемым
 ENTRYPOINT ["/app/entrypoint.sh"]
 ```
-Команда `RUN chmod +x entrypoint.sh` делает файл исполняемым.  
 Сам файл entrypoint.sh содержит команды запуска миграций и заполнения базы данных:  
 ```
 #! /bin/bash
@@ -60,5 +59,25 @@ python manage.py load_cities
 
 exec gunicorn flight_catcher.wsgi:application -b 0.0.0.0:8000 --reload
 ```
+### 2.3 Образ фронтенда.
+Dockerfile:  
+```
+FROM nginx:1.27
+RUN rm /etc/nginx/conf.d/default.conf   # удаляем дефолтный конфиг-файл nginx
+COPY nginx.conf /etc/nginx/conf.d/   # копируем свой конфиг-файл в контейнер
+```
+Файл конфигурации nginx.conf:
+ ```
+server {
+    listen 80;
 
+    location / {
+        proxy_pass http://backend:8000;
+    }
 
+    location /static/ {
+        alias /static/;
+    }
+
+}
+```
