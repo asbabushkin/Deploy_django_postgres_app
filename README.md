@@ -124,9 +124,16 @@ docker run -d --name database --net=catcher_net -v catcher_vol:/var/lib/postgres
 docker run -d --name backend --net=catcher_net -e HOST=database -e PORT=5432 -e POSTGRES_DB=<my_db_name> -e POSTGRES_USER=<some_user> -e POSTGRES_PASSWORD=<some_password> catcher_back:02
 ```
 ### 3.3 Поднятие парсера.
-Поднимем контейнер с именем backend на основе образа catcher_parser:02. Парсер берет данные запроса из бд, поэтому необходимо передать в контейнер реквизиты для доступа к посгресу:
+Поднимем контейнер с именем parser на основе образа catcher_parser:02. Парсер берет данные запроса из бд, поэтому необходимо передать в контейнер реквизиты для доступа к посгресу:
 ```
 docker run -d --name parser --net=catcher_net -e HOST=database -e PORT=5432 -e POSTGRES_DB=<my_db_name> -e POSTGRES_USER=<some_user> -e POSTGRES_PASSWORD=<some_password> catcher_parser:02
 ```
+### 3.3 Поднятие фронтенда.
+Поднимем контейнер с фронтом на основе образа catcher_nginx:02 с открытым 80 портом, свяжем файлы конфигурации nginx на хосте и внутри контейнера в режиме readonly (ro). Таким образом, для изменения настроек nginx в контейнере достаточно будет изменить файл конфигурации на хосте. 
+```
+docker run -d --name frontend --net=catcher_net -p 80:80 -v ~/Progr/Flight_catcher_web/nginx/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro catcher_nginx:02
+```
+
+
 
 
