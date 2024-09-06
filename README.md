@@ -10,6 +10,7 @@ Flight_catcher состоит из:
 Приложение будет разворачиваться в нескольких контейнерах:
 * база данных;
 * бэкенд;
+* парсер;
 * фронтенд.
 ### 2.1 Образ базы данных.
 
@@ -30,6 +31,10 @@ set -e
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
 SELECT "CREATE DATABASE flight_search" WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = "flight_search")\gexec
 EOSQL
+```
+Соберем образ базы данных с именем catcher_db и тэгом 02. При этом нужно находиться в директории, где лежит наш докерфайл.
+```
+docker build -t catcher_db:02 .
 ```
 
 ### 2.2 Образ бэкенда.
@@ -56,15 +61,27 @@ python manage.py makemigrations --no-input
 python manage.py migrate --no-input
 python manage.py collectstatic --no-input
 python manage.py load_cities
-
 exec gunicorn flight_catcher.wsgi:application -b 0.0.0.0:8000 --reload
 ```
-Соберем образ базы данных с именем catcher_db и тэгом 02. При этом нужно находиться в директории, где лежит наш докерфайл.
+Соберем образ бэкенда с именем catcher_back и тэгом 02. При этом нужно находиться в директории, где лежит наш докерфайл.
 ```
-docker build -t catcher_db:02 .
+docker build -t catcher_back:02 .
 ```
-
-### 2.3 Образ фронтенда.
+### 2.3 Образ парсера.
+Dockerfile:  
+```
+FROM python:3.10
+COPY requirements.txt requirements.txt
+RUN python -m pip install --upgrade pip && pip install -r requirements.txt
+WORKDIR /app
+COPY data.py injektors.py main.py maintainers.py processors.py selektors.py ./
+ENTRYPOINT ["python3", "main.py"]
+```
+Соберем образ парсера с именем catcher_parser и тэгом 02. При этом нужно находиться в директории, где лежит наш докерфайл.
+```
+docker build -t catcher_parser:02 .
+```
+### 2.4 Образ фронтенда.
 Dockerfile:  
 ```
 FROM nginx:1.27
@@ -101,4 +118,15 @@ docker volume create catcher_vol
 ```
 docker run -d --name database --net=catcher_net -v catcher_vol:/var/lib/postgresql/data -e POSTGRES_DB=<my_db_name> -e POSTGRES_USER=<some_user> -e POSTGRES_PASSWORD=<some_password> catcher_db:02
 ```
+### 3.2 Поднятие бэкенда.
+Поднимем контейнер с именем backend на основе образа catcher_back:02, реквизиты для создания базы данных передадим через переменные окружения. HOST - имя контейнера с базой данных.
+```
+docker run -d --name backend --net=catcher_net -e HOST=database -e PORT=5432 -e POSTGRES_DB=<my_db_name> -e POSTGRES_USER=<some_user> -e POSTGRES_PASSWORD=<some_password> catcher_back:02
+```
+### 3.3 Поднятие парсера.
+Поднимем контейнер с именем backend на основе образа catcher_parser:02. Парсер берет данные запроса из бд, поэтому необходимо передать в контейнер реквизиты для доступа к посгресу:
+```
+docker run -d --name parser --net=catcher_net -e HOST=database -e PORT=5432 -e POSTGRES_DB=<my_db_name> -e POSTGRES_USER=<some_user> -e POSTGRES_PASSWORD=<some_password> catcher_parser:02
+```
+
 
