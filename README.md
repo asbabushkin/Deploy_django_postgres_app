@@ -40,18 +40,16 @@ docker build -t catcher_db:02 .
 ### 2.2 Образ бэкенда.
 Dockerfile:  
 ```
-FROM python:3.10
+FROM python:3.10-alpine
 COPY requirements.txt requirements.txt
 RUN python -m pip install --upgrade pip && pip install -r requirements.txt
 WORKDIR /app
 COPY ./flight_catcher/ ./flight_catcher/
 COPY ./flight_search/ ./flight_search/
-COPY ./data.py ./data.py
-COPY ./manage.py ./manage.py
-COPY ./entrypoint.sh ./entrypoint.sh
+COPY data.py manage.py entrypoint.sh ./
 EXPOSE 8000
-RUN chmod +x entrypoint.sh   # делаем файл entrypoint.sh исполняемым
-ENTRYPOINT ["/app/entrypoint.sh"]
+RUN chmod +x entrypoint.sh
+ENTRYPOINT ["sh", "/app/entrypoint.sh"]
 ```
 Сам файл entrypoint.sh содержит команды запуска миграций и заполнения базы данных:  
 ```
@@ -70,11 +68,11 @@ docker build -t catcher_back:02 .
 ### 2.3 Образ парсера.
 Dockerfile:  
 ```
-FROM python:3.10
+FROM python:3.10-alpine
 COPY requirements.txt requirements.txt
 RUN python -m pip install --upgrade pip && pip install -r requirements.txt
 WORKDIR /app
-COPY data.py  flight_catcher.session injektors.py main.py maintainers.py processors.py selektors.py ./
+COPY data.py flight_catcher.session injektors.py main.py maintainers.py processors.py selektors.py ./
 EXPOSE 8000
 ENTRYPOINT ["python3", "main.py"]
 ```
