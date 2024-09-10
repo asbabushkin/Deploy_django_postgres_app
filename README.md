@@ -48,7 +48,7 @@ COPY ./flight_catcher/ ./flight_catcher/
 COPY ./flight_search/ ./flight_search/
 COPY data.py manage.py entrypoint.sh ./
 EXPOSE 8000
-RUN chmod +x entrypoint.sh
+RUN chmod +x entrypoint.sh   # делаем файл entrypoint.sh исполняемым
 ENTRYPOINT ["sh", "/app/entrypoint.sh"]
 ```
 Сам файл entrypoint.sh содержит команды запуска миграций и заполнения базы данных:  
