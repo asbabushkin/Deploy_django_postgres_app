@@ -81,11 +81,25 @@ ENTRYPOINT ["python3", "main.py"]
 docker build -t catcher_parser:02 .
 ```
 ### 2.4 Образ фронтенда.
-Dockerfile:  
+При создании Dockerfile для фронтенда используем multi-stage build. На первом уровне собирается статика, на втором подключается http-сервер Nginx.    
 ```
+FROM python:3.10-alpine AS static-builder
+COPY ./flight_catcher/requirements.txt requirements.txt
+RUN python -m pip install --upgrade pip && pip install -r requirements.txt
+WORKDIR /app
+COPY ./flight_catcher/flight_catcher/ ./flight_catcher/
+COPY ./flight_catcher/flight_search/ ./flight_search/
+COPY ./flight_catcher/static/ ./static/
+COPY ./flight_catcher/manage.py ./
+RUN python manage.py collectstatic --noinput
+CMD python manage.py runserver 0.0.0.0:8000
+
+
 FROM nginx:1.27
-RUN rm /etc/nginx/conf.d/default.conf   # удаляем дефолтный конфиг-файл nginx
-COPY nginx.conf /etc/nginx/conf.d/   # копируем свой конфиг-файл в контейнер
+COPY --from=static-builder /app/static ./static
+RUN rm /etc/nginx/conf.d/default.conf
+COPY nginx/nginx.conf /etc/nginx/conf.d/
+
 ```
 Файл конфигурации nginx.conf:
  ```
